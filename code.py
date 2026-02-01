@@ -32,8 +32,14 @@ def llm(prompt, model="gpt-4o-mini"):
     }
 
     r = requests.post(OPENAI_URL, headers=headers, json=payload, timeout=60)
-    r.raise_for_status()
+
+    if r.status_code != 200:
+        st.error(f"OpenAI error {r.status_code}")
+        st.code(r.text)
+        st.stop()
+
     return r.json()["choices"][0]["message"]["content"]
+
 
 # -----------------------
 # Sidebar
