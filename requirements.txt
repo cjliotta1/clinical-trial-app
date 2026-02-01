@@ -1,5 +1,4 @@
 google-genai
-gradio
+streamlit
 pandas
 requests
-matplotlib
