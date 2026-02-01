@@ -68,4 +68,4 @@ if st.button("Run Analysis"):
                         phase_counts = df['Phase'].value_counts()
                         st.bar_chart(phase_counts)
                 else:
-                    st.info("No recent industry trials found for this search.")
+    st.info("No recent industry trials found for this search.")
