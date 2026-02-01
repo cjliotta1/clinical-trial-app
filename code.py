@@ -12,22 +12,34 @@ from openai import OpenAI
 st.set_page_config(page_title="Clinical Trial MOA Mapper", layout="wide")
 st.title("🧬 AI-Powered Clinical Trial MOA Mapping")
 
-# Initialize OpenAI client (expects OPENAI_API_KEY in Streamlit secrets)
+# OpenAI client (expects OPENAI_API_KEY in Streamlit secrets)
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # -----------------------
-# LLM helper
+# LLM helper (ROBUST)
 # -----------------------
-def llm(prompt, model="gpt-4o-mini"):
+def llm(prompt, model="gpt-4.1-mini"):
     response = client.responses.create(
         model=model,
-        input=prompt,
+        input=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
         temperature=0.3,
     )
-    return response.output_text
+
+    # Safely extract text from response
+    output_text = ""
+    for item in response.output:
+        if item["type"] == "output_text":
+            output_text += item["text"]
+
+    return output_text.strip()
 
 # -----------------------
-# Sidebar controls
+# Sidebar
 # -----------------------
 st.sidebar.header("Controls")
 target_indication = st.sidebar.text_input(
@@ -40,6 +52,7 @@ run = st.sidebar.button("Run analysis")
 # Main workflow
 # -----------------------
 if run:
+
     # -----------------------
     # Disease overview
     # -----------------------
@@ -51,7 +64,7 @@ if run:
     st.markdown(disease_overview)
 
     # -----------------------
-    # Fetch ALL matching trials (pagination)
+    # Fetch ALL trials (pagination)
     # -----------------------
     st.subheader("2️⃣ Fetching clinical trials")
 
@@ -71,11 +84,12 @@ if run:
                 "pageSize": 100,
                 "format": "json",
             }
+
             if page_token:
                 params["pageToken"] = page_token
 
-            response = requests.get(base_url, params=params)
-            data = response.json()
+            r = requests.get(base_url, params=params)
+            data = r.json()
 
             all_trials.extend(data.get("studies", []))
             page_token = data.get("nextPageToken")
@@ -133,13 +147,13 @@ if run:
     st.dataframe(df)
 
     # -----------------------
-    # MOA analysis (summary-level)
+    # MOA analysis (summary)
     # -----------------------
     st.subheader("4️⃣ MOA landscape analysis")
 
     intervention_summary = "\n".join(
         f"- {row.drug} ({row.sponsor}, Phase {row.phase}, {row.year})"
-        for _, row in df.head(20).iterrows()  # cap prompt size
+        for _, row in df.head(20).iterrows()
     )
 
     with st.spinner("Analyzing mechanisms of action..."):
@@ -154,17 +168,17 @@ Drug candidates:
 {intervention_summary}
 
 Analyze:
-1. What mechanisms are being pursued? Group similar MOAs.
-2. Identify first-in-class drugs.
-3. Based on the disease biology, what unexplored mechanisms could be promising?
-4. Which approach seems most differentiated?
+1. Mechanisms being pursued
+2. First-in-class drugs
+3. Unexplored mechanisms
+4. Most differentiated approach
 """
         )
 
     st.markdown(moa_analysis)
 
     # -----------------------
-    # MOA classification (drug-level)
+    # MOA classification
     # -----------------------
     st.subheader("5️⃣ MOA classification")
 
@@ -187,11 +201,10 @@ DrugName: MOA
             moa_map[drug.strip()] = moa.strip()
 
     df["moa"] = df["drug"].map(moa_map).fillna("Other")
-
     st.dataframe(df[["drug", "phase", "moa"]])
 
     # -----------------------
-    # Chart: MOA by phase
+    # Chart
     # -----------------------
     st.subheader("6️⃣ MOA by development phase")
 
