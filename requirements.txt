@@ -1,4 +1,5 @@
-google-genai
 streamlit
 pandas
 requests
+matplotlib
+openai
