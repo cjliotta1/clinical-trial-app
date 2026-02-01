@@ -1,16 +1,12 @@
-import gradio as gr
+import streamlit as st
 import pandas as pd
 import requests
-import matplotlib.pyplot as plt
-from google import genai  # The universal way
+from google import genai  # <--- This is the new "universal" way
 import os
 
-# This looks for the "Secret" key you added to Streamlit settings
-try:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    client = genai.Client(api_key=api_key)
-except:
-    client = None
+# This pulls your API key from the Streamlit "Secrets" area
+api_key = st.secrets.get("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key)
 
 def run_clinical_analysis(target_indication):
     if not client:
