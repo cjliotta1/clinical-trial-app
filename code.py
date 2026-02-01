@@ -4,7 +4,6 @@ import streamlit as st
 import requests
 import pandas as pd
 import matplotlib.pyplot as plt
-from openai import OpenAI
 
 # -----------------------
 # App setup
@@ -12,31 +11,29 @@ from openai import OpenAI
 st.set_page_config(page_title="Clinical Trial MOA Mapper", layout="wide")
 st.title("🧬 AI-Powered Clinical Trial MOA Mapping")
 
-# OpenAI client (expects OPENAI_API_KEY in Streamlit secrets)
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 
 # -----------------------
-# LLM helper (ROBUST)
+# LLM helper (NO SDK)
 # -----------------------
-def llm(prompt, model="gpt-4.1-mini"):
-    response = client.responses.create(
-        model=model,
-        input=[
-            {
-                "role": "user",
-                "content": prompt
-            }
+def llm(prompt, model="gpt-4o-mini"):
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "user", "content": prompt}
         ],
-        temperature=0.3,
-    )
+        "temperature": 0.3,
+    }
 
-    # Safely extract text from response
-    output_text = ""
-    for item in response.output:
-        if item["type"] == "output_text":
-            output_text += item["text"]
-
-    return output_text.strip()
+    r = requests.post(OPENAI_URL, headers=headers, json=payload, timeout=60)
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"]
 
 # -----------------------
 # Sidebar
@@ -147,7 +144,7 @@ if run:
     st.dataframe(df)
 
     # -----------------------
-    # MOA analysis (summary)
+    # MOA analysis
     # -----------------------
     st.subheader("4️⃣ MOA landscape analysis")
 
